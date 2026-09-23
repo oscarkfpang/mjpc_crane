@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Onboard MuJoCo-based MPC for Shipboard Crane Sway Suppression</title>
+<meta name="description" content="Sampling-based model predictive control with MuJoCo for double-pendulum payload sway suppression on a shipboard boom crane. IROS 2026." />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700;800&family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;1,6..72,400&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet" />
+<style>
+  :root{
+    --navy:#0f2436; --navy-2:#16324a; --steel:#5b7286;
+    --paper:#f5f2ea; --paper-2:#ffffff;
+    --ink:#14202b; --ink-soft:#3f5162;
+    --amber:#e8721f; --amber-soft:#f4a259;
+    --line:#d9d3c6; --line-dk:#26425c;
+    --max:1040px;
+  }
+  *{box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  body{margin:0;background:var(--paper);color:var(--ink);
+    font-family:"Newsreader",Georgia,serif;font-size:19px;line-height:1.62;-webkit-font-smoothing:antialiased;}
+  h1,h2,h3,h4,.mono,.btn,.eyebrow,th,.tag{font-family:"Archivo",system-ui,sans-serif;}
+  .mono{font-family:"IBM Plex Mono",ui-monospace,monospace;}
+  a{color:var(--amber);text-decoration:none;}
+  a:hover{text-decoration:underline;}
+  .wrap{max-width:var(--max);margin:0 auto;padding:0 28px;}
+  .measure{max-width:70ch;}
+
+  .hero{
+    background:
+      radial-gradient(120% 90% at 85% -10%, rgba(232,114,31,.18), transparent 60%),
+      linear-gradient(180deg,var(--navy) 0%, var(--navy-2) 100%);
+    color:var(--paper);border-bottom:1px solid var(--line-dk);
+    position:relative;overflow:hidden;text-align:center;
+  }
+  .hero::after{content:"";position:absolute;left:0;right:0;top:62%;height:1px;
+    background:linear-gradient(90deg,transparent,rgba(91,114,134,.5),transparent);}
+  .hero .wrap{padding-top:64px;padding-bottom:58px;position:relative;z-index:2;}
+  .venue{display:inline-flex;align-items:center;gap:10px;
+    font-family:"IBM Plex Mono",monospace;font-size:13px;color:var(--amber-soft);
+    border:1px solid var(--line-dk);border-radius:999px;padding:6px 14px;margin-bottom:24px;}
+  .venue .dot{width:6px;height:6px;border-radius:50%;background:var(--amber);}
+  h1{font-weight:800;font-size:clamp(28px,4.6vw,46px);line-height:1.08;
+    letter-spacing:-0.02em;margin:0 auto 12px;max-width:90%;text-wrap:balance;}
+  .subtitle{font-family:"Newsreader",serif;font-style:italic;
+    font-size:clamp(17px,2.3vw,22px);color:#c7d3dd;max-width:56ch;margin:0 auto 26px;}
+  .authors{font-family:"Archivo",sans-serif;font-weight:600;font-size:17px;color:#eef2f5;margin:0 auto 4px;max-width:60ch;}
+  .authors sup{color:var(--amber-soft);font-size:12px;}
+  .affil{font-size:15px;color:var(--steel);font-family:"Archivo",sans-serif;margin:0 auto 28px;}
+  .actions{display:flex;flex-wrap:wrap;gap:11px;justify-content:center;}
+  .btn{display:inline-flex;align-items:center;gap:9px;font-weight:600;font-size:15px;
+    padding:10px 17px;border-radius:999px;border:1px solid transparent;cursor:pointer;
+    transition:transform .12s ease, background .12s ease, border-color .12s ease;}
+  .btn svg{width:16px;height:16px;flex:none;}
+  .btn-primary{background:var(--amber);color:#241207;}
+  .btn-primary:hover{background:var(--amber-soft);text-decoration:none;transform:translateY(-1px);}
+  .btn-ghost{background:transparent;color:var(--paper);border-color:var(--line-dk);}
+  .btn-ghost:hover{background:rgba(255,255,255,.06);border-color:var(--steel);text-decoration:none;transform:translateY(-1px);}
+
+  section{padding:58px 0;border-bottom:1px solid var(--line);}
+  .eyebrow{font-family:"IBM Plex Mono",monospace;font-size:12.5px;letter-spacing:.14em;
+    text-transform:uppercase;color:var(--steel);margin:0 0 14px;}
+  h2{font-weight:700;font-size:clamp(23px,3.1vw,30px);letter-spacing:-0.01em;
+    line-height:1.12;margin:0 0 20px;color:var(--navy);}
+  h3{font-weight:700;font-size:19px;margin:38px 0 8px;color:var(--navy);}
+  h4{font-weight:700;font-size:16px;margin:0 0 6px;color:var(--navy);}
+  p{margin:0 0 16px;}
+  .lead{font-size:20px;}
+
+  .video-slot{background:var(--navy);border:1px solid var(--line-dk);border-radius:14px;
+    aspect-ratio:16/9;display:flex;flex-direction:column;align-items:center;justify-content:center;
+    color:#9fb2c2;text-align:center;gap:10px;padding:20px;}
+  .video-slot .mono{font-size:13px;color:var(--steel);}
+  .video-slot svg{width:44px;height:44px;opacity:.7;}
+  .video-slot.has-video{padding:0;border:none;background:transparent;aspect-ratio:auto;}
+  .video-slot.has-video iframe,.video-slot.has-video video{width:100%;aspect-ratio:16/9;border:0;border-radius:14px;display:block;}
+
+  .abstract{border-left:3px solid var(--amber);padding-left:26px;}
+
+  figure{margin:0;}
+  .fig{background:var(--paper-2);border:1px solid var(--line);border-radius:12px;padding:14px;}
+  .fig img{width:100%;height:auto;display:block;border-radius:6px;}
+  figcaption{font-size:15px;color:var(--ink-soft);margin-top:12px;line-height:1.5;font-family:"Newsreader",serif;}
+
+  .contribs{display:grid;gap:22px;margin-top:4px;}
+  @media(min-width:720px){.contribs{grid-template-columns:1fr 1fr;gap:24px 40px;}}
+  .contrib{display:flex;gap:15px;}
+  .contrib .n{font-family:"IBM Plex Mono",monospace;font-size:14px;color:var(--amber);padding-top:3px;flex:none;min-width:22px;}
+  .contrib p{margin:0;font-size:17px;line-height:1.5;}
+
+  .highs{display:grid;gap:18px;margin-top:6px;}
+  @media(min-width:720px){.highs{grid-template-columns:repeat(3,1fr);gap:22px;}}
+  .high{border-top:2px solid var(--navy);padding-top:14px;}
+  .high h4{margin-bottom:6px;}
+  .high p{font-size:15.5px;color:var(--ink-soft);margin:0;}
+
+  .tbl-scroll{overflow-x:auto;border:1px solid var(--line);border-radius:12px;background:var(--paper-2);margin-top:8px;}
+  table{border-collapse:collapse;width:100%;font-family:"Archivo",sans-serif;font-size:14.5px;min-width:460px;}
+  caption{caption-side:bottom;text-align:left;font-family:"Newsreader",serif;font-size:14px;
+    color:var(--ink-soft);padding:12px 16px;line-height:1.5;}
+  th,td{padding:10px 14px;text-align:center;border-bottom:1px solid var(--line);}
+  thead th{color:var(--navy);font-weight:700;border-bottom:1.5px solid var(--steel);}
+  tbody th{text-align:left;font-weight:600;color:var(--ink);}
+  td.best{color:var(--amber);font-weight:700;}
+  tbody tr:last-child td,tbody tr:last-child th{border-bottom:none;}
+  .row-note{font-family:"Archivo",sans-serif;font-size:13px;color:var(--steel);font-weight:500;}
+
+  .cite{background:var(--navy);color:#d6e0e8;border-radius:12px;padding:20px 22px;position:relative;
+    font-family:"IBM Plex Mono",monospace;font-size:13.5px;line-height:1.7;overflow-x:auto;}
+  .cite pre{margin:0;white-space:pre;}
+  .copy{position:absolute;top:14px;right:14px;font-family:"Archivo",sans-serif;font-size:12.5px;font-weight:600;
+    background:var(--amber);color:#241207;border:none;border-radius:7px;padding:6px 12px;cursor:pointer;}
+  .copy:hover{background:var(--amber-soft);}
+
+  footer{padding:32px 0 46px;color:var(--ink-soft);font-size:14px;font-family:"Archivo",sans-serif;}
+  .footer-inner{display:flex;flex-direction:column;gap:14px;}
+  .foot-attrib{max-width:75ch;margin:0;font-size:13.5px;line-height:1.6;color:var(--ink-soft);}
+  .foot-meta{margin:0;font-size:13px;color:var(--steel);}
+
+  @media(prefers-reduced-motion:reduce){*{transition:none!important;scroll-behavior:auto!important;}}
+  a:focus-visible,.btn:focus-visible,.copy:focus-visible{outline:2px solid var(--amber);outline-offset:3px;border-radius:6px;}
+</style>
+</head>
+<body>
+
+  <header class="hero">
+    <div class="wrap">
+      <span class="venue"><span class="dot"></span>IROS 2026 &nbsp;·&nbsp; Accepted</span>
+      <h1>Sampling-Based MuJoCo MPC for Double-Pendulum Sway Suppression on a Shipboard Crane</h1>
+      <p class="subtitle">Sampling-based predictive control that plans over the full nonlinear double-pendulum dynamics — no linearization, no offline training — running in real time on embedded hardware.</p>
+      <p class="authors">Oscar Pang<sup>1</sup>&nbsp;&nbsp;·&nbsp;&nbsp;Lisa Coiffard<sup>1</sup>&nbsp;&nbsp;·&nbsp;&nbsp;Paul Templier<sup>1</sup>&nbsp;&nbsp;·&nbsp;&nbsp;Luke Beddow<sup>1</sup>&nbsp;&nbsp;·&nbsp;&nbsp;Kamil Dreczkowski<sup>1</sup>&nbsp;&nbsp;·&nbsp;&nbsp;Antoine Cully<sup>1</sup></p>
+      <p class="affil"><sup>1</sup>Imperial College London</p>
+
+      <div class="actions">
+        <a class="btn btn-ghost" id="arxiv-link" href="https://arxiv.org/abs/2603.16407" target="_blank" rel="noopener">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16v16H4z"/><path d="M8 8h8M8 12h8M8 16h5"/></svg>
+          arXiv
+        </a>
+        <a class="btn btn-ghost" id="video-link" href="#video">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 5h16v14H4z"/><path d="M10 9l5 3-5 3z" fill="currentColor" stroke="none"/></svg>
+          Video
+        </a>
+        <a class="btn btn-ghost" href="#bibtex">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M7 7h10M7 12h10M7 17h6"/></svg>
+          BibTeX
+        </a>
+      </div>
+    </div>
+  </header>
+
+  <section id="video">
+    <div class="wrap">
+      <div class="video-slot has-video">
+        <video controls poster="figures/poster.jpg" src="video/demo.mp4"></video>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="wrap">
+      <p class="eyebrow">Abstract</p>
+      <div class="abstract measure">
+        <p>Transferring heavy payloads in shipboard settings relies on efficient crane operation, limited by hazardous double-pendulum payload sway that wind and ocean-wave perturbations amplify. Existing control methods struggle in such settings: analytical MPC relies on linearized or reduced-order models, while reinforcement learning requires extensive offline training and cannot adapt once deployed.</p>
+        <p>We present a complete real-time control pipeline centered on the MuJoCo MPC framework, using a cross-entropy method planner to evaluate candidate action sequences directly through simulation rollouts. This sampling-based approach reconciles the competing objectives of dynamic target tracking and payload sway damping without an analytical model. The controller runs effectively on embedded hardware, achieves significantly lower position error than PID and RL baselines across all conditions while remaining competitive on sway damping, and degrades gracefully under unmodeled physical discrepancies such as an added second payload.</p>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="wrap">
+      <p class="eyebrow">Contributions</p>
+      <h2>What the paper adds</h2>
+      <div class="contribs">
+        <div class="contrib"><span class="n">01</span><p>An alternative to analytical-model MPC that plans directly over the full double-pendulum dynamics via physics-engine rollouts — sidestepping linearization, DoF reduction, and planner–stabilizer decomposition.</p></div>
+        <div class="contrib"><span class="n">02</span><p>An adaptive cost function that reconciles fast payload transfer with sway damping, validated on a physical crane against PID and RL baselines across four emulated sea states.</p></div>
+        <div class="contrib"><span class="n">03</span><p>An analysis of the trade-off between CEM iteration budget and planning frequency for real-time deployment on compute-constrained embedded hardware.</p></div>
+        <div class="contrib"><span class="n">04</span><p>A robustness study under an unmodeled second payload (+74% mass, a new triple-pendulum mode), showing graceful degradation through constant replanning.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="wrap">
+      <p class="eyebrow">How it works</p>
+      <h2>From a real crane to a real-time controller</h2>
+
+      <figure style="margin-bottom:34px;">
+        <div class="fig">
+          <img src="figures/crane_platform_target_payload_small.jpg" alt="Boom-type crane mounted on a motion platform, with a suspended double-pendulum payload." />
+        </div>
+        <figcaption>Our boom-type crane on a motion platform that emulates ship motion.</figcaption>
+      </figure>
+
+      <h3 style="margin-top:0;">Modeling the crane in MuJoCo</h3>
+      <p class="measure">No MuJoCo model with calibrated actuator dynamics existed for this proprietary crane, so we built one — the foundation the whole pipeline plans over. The three actuated joints are modeled as velocity actuators with gain <span class="mono">K<sub>v</sub></span> and rotor-inertia armature <span class="mono">I<sub>arm</sub></span>, tuned in two stages: <span class="mono">K<sub>v</sub></span> to match the commanded steady-state velocity, then <span class="mono">I<sub>arm</sub></span> to match the transient response during acceleration and deceleration. We validate the identified parameters against measured crane trajectories over the full excitation sequence.</p>
+
+      <div class="tbl-scroll" style="margin-bottom:44px;">
+        <table>
+          <caption>Identified actuator and joint parameters with validation RMSE against measured crane trajectories. The larger hoist residual reflects the prismatic joint's friction losses but stays small relative to the 2&nbsp;m cable range.</caption>
+          <thead>
+            <tr><th>Joint</th><th>K<sub>v</sub></th><th>I<sub>arm</sub></th><th>Damping</th><th>RMSE</th></tr>
+          </thead>
+          <tbody>
+            <tr><th>Slew</th><td>7800</td><td>1000</td><td>0.01</td><td>1.5×10⁻³ rad</td></tr>
+            <tr><th>Luff</th><td>13000</td><td>2200</td><td>0.01</td><td>9.5×10⁻⁵ rad</td></tr>
+            <tr><th>Hoist</th><td>25000</td><td>3200</td><td>0.0</td><td>1.1×10⁻² m</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3>The simulator is the controller</h3>
+      <p class="measure" style="margin-bottom:24px;">With that model in hand, control becomes planning by simulation. At each cycle, candidate action sequences are sampled, rolled forward through MuJoCo over the full coupled dynamics, and the best-performing sequence is executed on the crane — no linearization, no degree-of-freedom reduction, no offline training.</p>
+
+      <figure>
+        <div class="fig">
+          <img src="figures/architecture.png" alt="System architecture: state estimate and predicted base motion feed the CEM planner in MJPC, which samples candidate policies, rolls them forward in simulation, and sends the best action to the crane." />
+        </div>
+        <figcaption>Planning by simulation: sample actions, roll them forward in MuJoCo, execute the best on hardware.</figcaption>
+      </figure>
+    </div>
+  </section>
+
+  <section>
+    <div class="wrap">
+      <p class="eyebrow">Method at a glance</p>
+      <h2>Three pieces that make it run</h2>
+      <div class="highs">
+        <div class="high"><h4>Adaptive cost</h4><p>A distance-dependent blend shifts emphasis from reaching the target to settling gently, resolving two objectives that otherwise conflict.</p></div>
+        <div class="high"><h4>Disturbance forecast</h4><p>Predicted ship motion drives the base inside the rollouts, so the planner anticipates how the payload will swing — not just react.</p></div>
+        <div class="high"><h4>Real-time CEM</h4><p>Five warm-started iterations per cycle damp the sway while keeping the planner faster than the 20&nbsp;Hz control loop, even on a Jetson.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="wrap">
+      <p class="eyebrow">Results</p>
+      <h2>Best tracking across every sea state</h2>
+      <p class="measure" style="margin-bottom:22px;">Median position error over the station-keeping interval, across four motion-platform speeds. MJPC achieves the lowest position error in every condition and damps sway better than the baselines as the seas get rougher.</p>
+      <div class="tbl-scroll">
+        <table>
+          <caption>Median position error (m). Lower is better; best per column in <span style="color:var(--amber);font-weight:700;">orange</span>. Full statistics, payload-tilt results, and significance tests in the paper.</caption>
+          <thead>
+            <tr><th>Method</th><th>Static</th><th>Slow</th><th>Medium</th><th>Fast</th></tr>
+          </thead>
+          <tbody>
+            <tr><th>RL</th><td>0.27</td><td>0.39</td><td>0.47</td><td>0.43</td></tr>
+            <tr><th>PID</th><td>0.08</td><td>0.22</td><td>0.16</td><td>0.20</td></tr>
+            <tr><th>MJPC <span class="row-note">(ours)</span></th><td class="best">0.03</td><td>0.09</td><td>0.11</td><td class="best">0.11</td></tr>
+            <tr><th>MJPC&nbsp;[edge] <span class="row-note">(ours)</span></th><td class="best">0.03</td><td class="best">0.06</td><td class="best">0.07</td><td class="best">0.10</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3>Robustness to unmodeled dynamics</h3>
+      <p class="measure" style="margin-bottom:22px;">We hung an extra payload beneath the first — adding 74% more mass and turning it into a triple pendulum, a dynamic the MuJoCo model was never given. The reinforcement learning policy, trained on the original payload, couldn't cope. Our controller degraded gracefully: because it re-plans from the real state every cycle, it kept correcting even for dynamics it had never seen.</p>
+
+      <div class="tbl-scroll">
+        <table>
+          <caption>Change in median <strong>position error (m)</strong> under the unmodeled second payload, relative to each controller's single-payload baseline. Lower is better; smallest degradation per column in <span style="color:var(--amber);font-weight:700;">orange</span>. Payload-tilt degradation is reported in the paper.</caption>
+          <thead>
+            <tr><th>Method</th><th>Static</th><th>Slow</th><th>Medium</th><th>Fast</th></tr>
+          </thead>
+          <tbody>
+            <tr><th>RL <span class="row-note">Δ</span></th><td>+0.42</td><td>+0.35</td><td>−0.04</td><td>+0.48</td></tr>
+            <tr><th>PID <span class="row-note">Δ</span></th><td>+0.11</td><td>+0.06</td><td>+0.15</td><td>+0.13</td></tr>
+            <tr><th>MJPC&nbsp;[edge] <span class="row-note">Δ (ours)</span></th><td class="best">+0.03</td><td>+0.17</td><td>+0.23</td><td>+0.16</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <section id="bibtex">
+    <div class="wrap">
+      <p class="eyebrow">Cite</p>
+      <h2>BibTeX</h2>
+      <div class="cite">
+        <button class="copy" id="copyBtn">Copy</button>
+<pre id="bib">@article{crane_mjpc_2026,
+  title   = {Onboard MuJoCo-based Model Predictive Control for
+             Shipboard Crane with Double-Pendulum Sway Suppression},
+  author  = {Author One and Author Two and Author Three},
+  journal = {arXiv preprint arXiv:2603.16407},
+  year    = {2026},
+  url     = {https://arxiv.org/abs/2603.16407}
+}</pre>
+      </div>
+    </div>
+  </section>
+
+  <footer>
+    <div class="wrap footer-inner">
+      <p class="foot-attrib">
+        This page was built using the
+        <a href="https://github.com/eliahuhorwitz/Academic-project-page-template" target="_blank" rel="noopener">Academic Project Page Template</a>,
+        which was adopted from the
+        <a href="https://nerfies.github.io/" target="_blank" rel="noopener">Nerfies</a> project page.
+        You are free to borrow the source code of this website, we just ask that you link back to this page in the footer.
+        This website is licensed under a
+        <a href="http://creativecommons.org/licenses/by-sa/4.0/" target="_blank" rel="noopener">Creative Commons Attribution-ShareAlike 4.0 International License</a>.
+      </p>
+      <p class="foot-meta">© 2026 · Imperial College London &nbsp;</p>
+    </div>
+  </footer>
+
+<script>
+  const btn=document.getElementById('copyBtn');
+  btn.addEventListener('click',async()=>{
+    const t=document.getElementById('bib').innerText;
+    try{await navigator.clipboard.writeText(t);btn.textContent='Copied';setTimeout(()=>btn.textContent='Copy',1600);}
+    catch(e){btn.textContent='Copy failed';setTimeout(()=>btn.textContent='Copy',1600);}
+  });
+</script>
+</body>
+</html>
